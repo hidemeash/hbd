@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Birthday Balloon Pop Game</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d7ff2",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: { "display": ["Spline Sans"] },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+    <style>
+        .grid-pattern {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(13, 127, 242, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(13, 127, 242, 0.05) 1px, transparent 1px);
+        }
+        .bubbly-text { letter-spacing: -0.02em; font-weight: 800; }
+        body { min-height: 100dvh; overflow: hidden; }
+
+        /* Balloon Frame Design */
+        .balloon-wrapper {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.1s;
+            animation: float 4s ease-in-out infinite;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .balloon-frame {
+            width: 75px;
+            height: 90px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.2), 0 10px 15px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 2;
+        }
+        /* The String */
+        .balloon-string {
+            position: absolute;
+            top: 95%;
+            left: 50%;
+            width: 2px;
+            height: 50px;
+            background: linear-gradient(to bottom, #0d7ff288, transparent);
+            transform-origin: top center;
+            animation: sway 4s ease-in-out infinite;
+            z-index: 1;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rot)); }
+            50% { transform: translateY(-25px) rotate(calc(var(--rot) * -1)); }
+        }
+        @keyframes sway {
+            0%, 100% { transform: translateX(-50%) rotate(5deg); }
+            50% { transform: translateX(-50%) rotate(-5deg); }
+        }
+        .pop-fast { animation: fastPop 0.15s ease-out forwards !important; }
+        @keyframes fastPop {
+            0% { transform: scale(1); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        /* Stage 2 Transitions */
+        .flip-card { perspective: 1000px; width: 100%; height: 100%; }
+        .flip-card-inner {
+            position: relative; width: 100%; height: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .is-flipped .flip-card-inner { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 1.5rem;
+            overflow: hidden;
+        }
+        .flip-card-back { transform: rotateY(180deg); }
+        #scratch-canvas { position: absolute; top: 0; left: 0; z-index: 30; touch-action: none; border-radius: 1.5rem; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111418] dark:text-white antialiased">
+
+<div id="balloon-stage" class="relative flex h-screen w-full flex-col grid-pattern transition-transform duration-500">
+    <div class="flex flex-col gap-3 p-6 pt-12">
+        <div class="flex items-center justify-between mb-2">
+            <button class="size-10 flex items-center justify-center rounded-full bg-white/80 dark:bg-white/10 shadow-sm backdrop-blur-md">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div class="flex flex-col items-center">
+                <h2 class="text-[#111418] dark:text-white text-xl bubbly-text uppercase">Pop 21 Balloons!</h2>
+                <p class="text-primary text-xs font-bold uppercase tracking-widest">Birthday Mission</p>
+            </div>
+            <button class="size-10 flex items-center justify-center rounded-full bg-white/80 dark:bg-white/10 shadow-sm backdrop-blur-md">
+                <span class="material-symbols-outlined">help</span>
+            </button>
+        </div>
+        <div class="bg-white/50 dark:bg-white/5 p-4 rounded-xl border border-white/20 backdrop-blur-sm">
+            <div class="flex gap-6 justify-between items-end mb-2">
+                <div class="flex flex-col">
+                    <span id="pop-count" class="text-[#111418] dark:text-white text-2xl bubbly-text">0/21</span>
+                    <span class="text-[#60758a] dark:text-[#a0b0c0] text-[10px] font-bold uppercase tracking-wider">Balloons Popped</span>
+                </div>
+                <p id="status-msg" class="text-primary text-sm font-bold animate-pulse">Go!</p>
+            </div>
+            <div class="h-4 w-full rounded-full bg-primary/10 dark:bg-white/10 overflow-hidden border border-primary/5">
+                <div id="progress-bar" class="h-full rounded-full bg-primary shadow-[0_0_15px_rgba(13,127,242,0.5)] transition-all duration-200" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-area" class="relative flex-1 w-full px-6 overflow-hidden">
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] dark:opacity-[0.05]">
+            <span class="text-[20rem] font-black italic">21</span>
+        </div>
+    </div>
+</div>
+
+<div id="scratch-stage" class="hidden absolute inset-0 flex-col bg-background-light dark:bg-background-dark opacity-0 transition-opacity duration-300">
+    <nav class="flex items-center justify-between p-4 pt-12">
+        <div class="w-12"></div>
+        <div class="flex flex-col items-center">
+            <span class="text-xs font-bold uppercase tracking-widest text-primary">Mission Complete</span>
+            <h2 class="text-lg font-extrabold leading-tight">For the Birthday Boy! 🐯</h2>
+        </div>
+        <div class="w-12"></div>
+    </nav>
+    <main class="flex-1 flex flex-col px-4 max-w-md mx-auto w-full">
+        <h1 class="text-[28px] font-extrabold text-center py-6 leading-tight">Scratch to reveal! ✨</h1>
+        <div class="relative aspect-[3/4] w-full shadow-2xl rounded-[1.5rem]">
+            <canvas id="scratch-canvas"></canvas>
+            <div id="surprise-card" class="flip-card hidden">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front bg-slate-900 border-none">
+                        <div class="grid grid-cols-2 grid-rows-2 w-full h-full">
+                            <div class="bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/hb1/400/600')"></div>
+                            <div class="bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/hb2/400/600')"></div>
+                            <div class="bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/hb3/400/600')"></div>
+                            <div class="bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/hb4/400/600')"></div>
+                        </div>
+                    </div>
+                    <div class="flip-card-back bg-primary text-white flex flex-col items-center justify-center p-8 text-center">
+                        <span class="text-7xl">🐯🐰</span>
+                        <h3 class="font-extrabold text-4xl mt-4">HAPPY 21st!</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-8 bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex justify-between mb-2">
+                <span class="font-extrabold text-slate-800 dark:text-white">Reveal Progress</span>
+                <span id="scratch-pct" class="text-primary font-extrabold text-xl">0%</span>
+            </div>
+            <div class="w-full h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div id="scratch-bar" class="h-full bg-primary" style="width: 0%"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    const gameArea = document.getElementById('game-area');
+    const popCount = document.getElementById('pop-count');
+    const progressBar = document.getElementById('progress-bar');
+    let popped = 0;
+    const total = 21;
+
+    function initBalloons() {
+        for (let i = 0; i < total; i++) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'balloon-wrapper';
+            
+            // Better positioning: Using a grid-like random logic to prevent heavy overlap
+            const col = i % 5; 
+            const row = Math.floor(i / 5);
+            wrapper.style.left = (col * 18 + Math.random() * 10) + '%';
+            wrapper.style.top = (row * 15 + Math.random() * 10) + '%';
+            wrapper.style.setProperty('--rot', (Math.random() * 16 - 8) + 'deg');
+            wrapper.style.animationDelay = (Math.random() * 3) + 's';
+
+            const frame = document.createElement('div');
+            frame.className = 'balloon-frame';
+            frame.style.backgroundImage = `url('https://picsum.photos/seed/${i+100}/200/300')`;
+            
+            const string = document.createElement('div');
+            string.className = 'balloon-string';
+
+            wrapper.appendChild(frame);
+            wrapper.appendChild(string);
+            
+            wrapper.onclick = () => {
+                if (wrapper.classList.contains('pop-fast')) return;
+                wrapper.classList.add('pop-fast');
+                popped++;
+                popCount.innerText = `${popped}/21`;
+                progressBar.style.width = (popped/total)*100 + '%';
+                if (popped === total) setTimeout(transition, 400);
+            };
+            gameArea.appendChild(wrapper);
+        }
+    }
+
+    function transition() {
+        document.getElementById('balloon-stage').style.transform = 'translateY(-100%)';
+        const sStage = document.getElementById('scratch-stage');
+        sStage.classList.remove('hidden');
+        setTimeout(() => {
+            sStage.style.opacity = '1';
+            initScratch();
+        }, 300);
+    }
+
+    // --- SCRATCH LOGIC ---
+    const canvas = document.getElementById('scratch-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    let isDrawing = false;
+    let revealed = false;
+
+    function initScratch() {
+        const container = canvas.parentElement;
+        canvas.width = container.offsetWidth;
+        canvas.height = container.offsetHeight;
+        ctx.fillStyle = '#0d7ff2';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = 'bold 24px Spline Sans';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText('SCRATCH ME', canvas.width/2, canvas.height/2);
+        document.getElementById('surprise-card').classList.remove('hidden');
+    }
+
+    function handleScratch(e) {
+        if (revealed) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI * 2); ctx.fill();
+
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let clear = 0;
+        for(let i=3; i<data.length; i+=4) if(data[i] === 0) clear++;
+        let pct = Math.round((clear / (data.length / 4)) * 100);
+
+        if (pct >= 70 && !revealed) {
+            revealed = true;
+            pct = 100;
+            canvas.style.transition = 'opacity 0.4s';
+            canvas.style.opacity = '0';
+            setTimeout(() => canvas.remove(), 400);
+        }
+        document.getElementById('scratch-pct').innerText = pct + '%';
+        document.getElementById('scratch-bar').style.width = pct + '%';
+    }
+
+    canvas.addEventListener('mousedown', () => isDrawing = true);
+    canvas.addEventListener('touchstart', () => isDrawing = true);
+    window.addEventListener('mouseup', () => isDrawing = false);
+    window.addEventListener('touchend', () => isDrawing = false);
+    canvas.addEventListener('mousemove', (e) => isDrawing && handleScratch(e));
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); isDrawing && handleScratch(e); });
+
+    document.getElementById('surprise-card').onclick = function() {
+        if (revealed) this.classList.toggle('is-flipped');
+    };
+
+    window.onload = initBalloons;
+</script>
+</body>
+</html>
