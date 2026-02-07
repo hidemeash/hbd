@@ -6,6 +6,7 @@
     <title>Birthday Balloon Pop Game</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script id="tailwind-config">
         tailwind.config = {
@@ -78,12 +79,17 @@
         }
 
         /* Stage 2 Transitions */
-        .flip-card { perspective: 1000px; width: 100%; height: 100%; }
+        .flip-card { perspective: 1000px; width: 100%; height: 100%; position: absolute; inset: 0; display: block; display: flex; align-items: stretch; justify-content: stretch; }
         .flip-card-inner {
             position: relative; width: 100%; height: 100%;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             transform-style: preserve-3d;
+            transform-origin: 50% 50%;
+            will-change: transform;
+            left: 0; top: 0;
         }
+        .flip-card-front, .flip-card-back { position: absolute; top: 0; left: 0; width: 100%; height: 100%; backface-visibility: hidden; transform: translateZ(0); }
+        .flip-card-back { transform: rotateY(180deg); }
         .is-flipped .flip-card-inner { transform: rotateY(180deg); }
         .flip-card-front, .flip-card-back {
             position: absolute; width: 100%; height: 100%;
@@ -100,14 +106,12 @@
     <div class="flex flex-col gap-3 p-6 pt-12">
         <div class="flex items-center justify-between mb-2">
             <button class="size-10 flex items-center justify-center rounded-full bg-white/80 dark:bg-white/10 shadow-sm backdrop-blur-md">
-                <span class="material-symbols-outlined">close</span>
             </button>
             <div class="flex flex-col items-center">
                 <h2 class="text-[#111418] dark:text-white text-xl bubbly-text uppercase">Pop 21 Balloons!</h2>
                 <p class="text-primary text-xs font-bold uppercase tracking-widest">Birthday Mission</p>
             </div>
             <button class="size-10 flex items-center justify-center rounded-full bg-white/80 dark:bg-white/10 shadow-sm backdrop-blur-md">
-                <span class="material-symbols-outlined">help</span>
             </button>
         </div>
         <div class="bg-white/50 dark:bg-white/5 p-4 rounded-xl border border-white/20 backdrop-blur-sm">
@@ -146,17 +150,17 @@
             <canvas id="scratch-canvas"></canvas>
             <div id="surprise-card" class="flip-card hidden">
                 <div class="flip-card-inner">
-                    <div class="flip-card-front bg-slate-900 border-none">
-                        <div class="grid grid-cols-2 grid-rows-2 w-full h-full">
-                            <div class="bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/hb1/400/600')"></div>
-                            <div class="bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/hb2/400/600')"></div>
-                            <div class="bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/hb3/400/600')"></div>
-                            <div class="bg-cover bg-center" style="background-image: url('https://picsum.photos/seed/hb4/400/600')"></div>
+                    <div class="flip-card-front bg-slate-900 border-none relative">
+                        <div class="w-full h-full bg-cover bg-center" style="background-image: url('card image/main full.png'); background-size: cover; background-position: center;"></div>
+                        <div id="tap-prompt" class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[1.5rem] opacity-0 transition-opacity duration-300 pointer-events-none">
+                            <div class="text-white text-center">
+                                <p style="font-family: 'Quicksand', sans-serif;" class="text-lg font-semibold">tap the card ✨</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="flip-card-back bg-primary text-white flex flex-col items-center justify-center p-8 text-center">
-                        <span class="text-7xl">🐯🐰</span>
-                        <h3 class="font-extrabold text-4xl mt-4">HAPPY 21st!</h3>
+                    <div class="flip-card-back bg-primary text-white flex flex-col items-center justify-center p-4 text-center overflow-y-auto">
+                        <img src="card image/623960007_1537780470859367_2940605262751531042_n.jpg" alt="birthday" class="w-24 h-24 rounded-lg object-cover mb-3 flex-shrink-0"/>
+                        <p style="font-family: 'Quicksand', sans-serif;" class="font-medium text-xs leading-relaxed">hi babi !! (WOW BABI?) happy birthday yayy !!<br/><br/>honestly, even though u're a total kupal, u really are my fave person to game with. i'm pretty sure we both have a saltik, so making me laugh isn't exactly a challenge for u, but i appreciate it anywayyy.<br/><br/>all jokes aside, i'm always in ur corner. if things ever get heavy or u're going through it, u know u can count on meee. ik i can be a lot sometimes, so don't feel like u always have to adjust for me. i never want to hurt ur feelings, but i also didn't want to let ur birthday pass without saying thanks for being there for me every day. u really do help me more than u know.<br/><br/>i hope u find all the vibes that make u happy. keep smiling and keep being the absolute menace that u are to everyone. mwa ! <br/><br/>(˶ > ₃ < ˶)</p>
                     </div>
                 </div>
             </div>
@@ -195,7 +199,20 @@
 
             const frame = document.createElement('div');
             frame.className = 'balloon-frame';
-            frame.style.backgroundImage = `url('https://picsum.photos/seed/${i+100}/200/300')`;
+            const imageIndex = i % 10; // Cycle through 10 images
+            const images = [
+                'balloon images/623056981_2085867732145407_8560532909991170471_n.jpg',
+                'balloon images/623365283_1270399514985800_3605560430533801209_n.jpg',
+                'balloon images/623878533_1664031664961941_1669691481241881582_n.jpg',
+                'balloon images/624106136_1203460721980953_2253425008619847090_n.jpg',
+                'balloon images/624961821_853015904404636_4621141468746201893_n.jpg',
+                'balloon images/625490549_779945351203723_4985810989128066971_n.jpg',
+                'balloon images/627218493_675853652218197_4515129571415517233_n.jpg',
+                'balloon images/627232418_26837730012482800_1455087131418402917_n.jpg',
+                'balloon images/627662851_1406330320964593_8940944002128046688_n.jpg',
+                'balloon images/628056171_1223311629392042_4910993909872206505_n.jpg'
+            ];
+            frame.style.backgroundImage = `url('${images[imageIndex]}')`;
             
             const string = document.createElement('div');
             string.className = 'balloon-string';
@@ -235,12 +252,24 @@
         const container = canvas.parentElement;
         canvas.width = container.offsetWidth;
         canvas.height = container.offsetHeight;
-        ctx.fillStyle = '#0d7ff2';
+        // Draw a metallic foil overlay on the canvas — scratching will remove this to reveal the front background image
+        ctx.globalCompositeOperation = 'source-over';
+        // base foil gradient
+        const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        g.addColorStop(0, '#cfd8dc');
+        g.addColorStop(0.5, '#b0bec5');
+        g.addColorStop(1, '#cfd8dc');
+        ctx.fillStyle = g;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.font = 'bold 24px Spline Sans';
-        ctx.fillStyle = 'white';
+        // subtle noise dots
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        for (let i = 0; i < 600; i++) ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1.5, 1.5);
+        // overlay text
+        ctx.font = '700 20px Spline Sans';
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.textAlign = 'center';
-        ctx.fillText('SCRATCH ME', canvas.width/2, canvas.height/2);
+        ctx.fillText('SCRATCH ME', canvas.width / 2, canvas.height / 2);
+
         document.getElementById('surprise-card').classList.remove('hidden');
     }
 
@@ -263,7 +292,11 @@
             pct = 100;
             canvas.style.transition = 'opacity 0.4s';
             canvas.style.opacity = '0';
-            setTimeout(() => canvas.remove(), 400);
+            setTimeout(() => {
+                canvas.remove();
+                const tp = document.getElementById('tap-prompt');
+                if (tp) tp.style.opacity = '0.5';
+            }, 400);
         }
         document.getElementById('scratch-pct').innerText = pct + '%';
         document.getElementById('scratch-bar').style.width = pct + '%';
@@ -277,7 +310,11 @@
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); isDrawing && handleScratch(e); });
 
     document.getElementById('surprise-card').onclick = function() {
-        if (revealed) this.classList.toggle('is-flipped');
+        if (revealed) {
+            this.classList.toggle('is-flipped');
+            const tp = document.getElementById('tap-prompt');
+            if (tp) tp.style.opacity = this.classList.contains('is-flipped') ? '0' : '0.5';
+        }
     };
 
     window.onload = initBalloons;
